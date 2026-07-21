@@ -2,6 +2,15 @@ plugins {
     id "com.android.application"
 }
 
+// Version info is injected by CI (see .github/workflows/release.yml) from the
+// git tag. Falls back to sensible defaults for local/debug builds.
+def ciVersionCode = (System.getenv("VERSION_CODE") ?: "1").toInteger()
+def ciVersionName = System.getenv("VERSION_NAME") ?: "1.0"
+
+// Release signing is driven entirely by env vars set in CI. When they are
+// absent (local builds) the release buildType stays unsigned.
+def keystoreFile = System.getenv("KEYSTORE_FILE")
+
 android {
     namespace "app.urlsharer"
     compileSdk 35
@@ -10,14 +19,28 @@ android {
         applicationId "app.urlsharer"
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName "1.0"
+        versionCode ciVersionCode
+        versionName ciVersionName
+    }
+
+    signingConfigs {
+        release {
+            if (keystoreFile) {
+                storeFile file(keystoreFile)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             // Keep the build simple: no shrinking needed, the app has no dependencies.
             minifyEnabled false
+            if (keystoreFile) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
