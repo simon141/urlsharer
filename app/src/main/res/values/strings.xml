@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">URL Sharer</string>
+    <string name="open_with">Open URL With...</string>
+    <string name="hint_url">Paste or edit a URL…</string>
+    <string name="error_empty">Enter a URL first</string>
+    <string name="error_no_app">No app found to open this URL</string>
+</resources>
