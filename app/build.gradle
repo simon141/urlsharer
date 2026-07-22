@@ -15,6 +15,10 @@ android {
     namespace "app.urlsharer"
     compileSdk 35
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "app.urlsharer"
         minSdk 26

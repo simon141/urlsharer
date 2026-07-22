@@ -15,6 +15,7 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -40,6 +41,8 @@ public class MainActivity extends Activity {
         urlText = findViewById(R.id.urlText);
         Button openButton = findViewById(R.id.openButton);
         openButton.setOnClickListener(v -> openWith());
+        TextView versionText = findViewById(R.id.versionText);
+        versionText.setText(getString(R.string.version, BuildConfig.VERSION_NAME));
 
         handleIntent(getIntent());
         if (savedInstanceState == null) {
