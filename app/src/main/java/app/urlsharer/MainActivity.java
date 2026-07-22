@@ -1,13 +1,17 @@
 package app.urlsharer;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
@@ -25,6 +29,7 @@ import java.util.Set;
  */
 public class MainActivity extends Activity {
 
+    private static final int REQUEST_BROWSER_ROLE = 1;
     private EditText urlText;
 
     @Override
@@ -37,6 +42,65 @@ public class MainActivity extends Activity {
         openButton.setOnClickListener(v -> openWith());
 
         handleIntent(getIntent());
+        if (savedInstanceState == null) {
+            urlText.post(this::promptForDefaultBrowser);
+        }
+    }
+
+    /** Offers a direct route to Android's default-browser prompt when needed. */
+    private void promptForDefaultBrowser() {
+        if (isDefaultBrowser()) {
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.default_browser_title)
+                .setMessage(R.string.default_browser_message)
+                .setNegativeButton(R.string.not_now, null)
+                .setPositiveButton(R.string.set_as_default, (dialog, which) -> requestBrowserRole())
+                .show();
+    }
+
+    private boolean isDefaultBrowser() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            RoleManager roles = getSystemService(RoleManager.class);
+            return roles != null && roles.isRoleAvailable(RoleManager.ROLE_BROWSER)
+                    && roles.isRoleHeld(RoleManager.ROLE_BROWSER);
+        }
+
+        ResolveInfo current = getPackageManager().resolveActivity(
+                new Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")),
+                PackageManager.MATCH_DEFAULT_ONLY);
+        return current != null && getPackageName().equals(current.activityInfo.packageName);
+    }
+
+    private void requestBrowserRole() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            RoleManager roles = getSystemService(RoleManager.class);
+            if (roles != null && roles.isRoleAvailable(RoleManager.ROLE_BROWSER)) {
+                try {
+                    startActivityForResult(
+                            roles.createRequestRoleIntent(RoleManager.ROLE_BROWSER),
+                            REQUEST_BROWSER_ROLE);
+                } catch (RuntimeException ignored) {
+                    openDefaultAppsSettings();
+                }
+                return;
+            }
+        }
+        openDefaultAppsSettings();
+    }
+
+    private void openDefaultAppsSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS));
+        } catch (RuntimeException ignored) {
+            try {
+                startActivity(new Intent(Settings.ACTION_SETTINGS));
+            } catch (RuntimeException e) {
+                Toast.makeText(this, R.string.error_default_settings, Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override

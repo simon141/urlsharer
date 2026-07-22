@@ -35,6 +35,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Install local/CI debug APKs alongside the production app.
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
         release {
             // Keep the build simple: no shrinking needed, the app has no dependencies.
             minifyEnabled false

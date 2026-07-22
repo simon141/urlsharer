@@ -5,4 +5,9 @@
     <string name="hint_url">Paste or edit a URL…</string>
     <string name="error_empty">Enter a URL first</string>
     <string name="error_no_app">No app found to open this URL</string>
+    <string name="error_default_settings">Unable to open Default Apps settings</string>
+    <string name="default_browser_title">Set URL Sharer as default?</string>
+    <string name="default_browser_message">To open links from other apps in URL Sharer, set it as your default browser. You can still choose another browser after editing the URL.</string>
+    <string name="set_as_default">Set as default</string>
+    <string name="not_now">Not now</string>
 </resources>
