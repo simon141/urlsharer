@@ -3,14 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:fitsSystemWindows="true"
-    android:padding="16dp">
+    android:fitsSystemWindows="true">
 
     <EditText
         android:id="@+id/urlText"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:layout_marginHorizontal="20dp"
         android:gravity="top|start"
         android:hint="@string/hint_url"
         android:inputType="textUri|textMultiLine"
@@ -22,6 +22,7 @@
         android:id="@+id/openButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
         android:layout_marginTop="16dp"
         android:text="@string/open_with" />
 
@@ -30,6 +31,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginBottom="16dp"
         android:layout_marginTop="4dp"
         android:textSize="11sp" />
 
