@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Required on Android 11+ (API 30+) so we can see every browser/app that
-         can open a web URL; without this the chooser only sees the default
-         browser and opens it directly. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />

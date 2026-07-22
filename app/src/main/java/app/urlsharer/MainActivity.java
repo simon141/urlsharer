@@ -3,6 +3,7 @@ package app.urlsharer;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.role.RoleManager;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -10,11 +11,14 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -155,25 +159,22 @@ public class MainActivity extends Activity {
             uri = Uri.parse("https://" + url);
         }
 
-        // Build an explicit intent for each app that can open the URL. Relying on a
-        // plain createChooser() lets the system collapse straight to the default
-        // browser when it thinks there is only one candidate; enumerating targets
-        // ourselves guarantees the full list is always offered.
         Intent probe = new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE);
         PackageManager pm = getPackageManager();
         List<ResolveInfo> matches = pm.queryIntentActivities(probe, PackageManager.MATCH_ALL);
+        matches.sort(new ResolveInfo.DisplayNameComparator(pm));
 
-        String selfPackage = getPackageName();
         Set<String> seen = new LinkedHashSet<>();
+        List<ResolveInfo> choices = new ArrayList<>();
         List<Intent> targets = new ArrayList<>();
         for (ResolveInfo info : matches) {
             String pkg = info.activityInfo.packageName;
-            // Skip ourselves (avoids a redirect loop) and de-duplicate per app.
-            if (selfPackage.equals(pkg) || !seen.add(pkg)) {
+            if (getPackageName().equals(pkg) || !seen.add(pkg)) {
                 continue;
             }
             Intent target = new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE);
             target.setComponent(new ComponentName(pkg, info.activityInfo.name));
+            choices.add(info);
             targets.add(target);
         }
 
@@ -182,18 +183,29 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // First target seeds the chooser; the rest are added as initial intents.
-        Intent chooser = Intent.createChooser(targets.remove(0), getString(R.string.open_with));
-        if (!targets.isEmpty()) {
-            chooser.putExtra(
-                    Intent.EXTRA_INITIAL_INTENTS,
-                    targets.toArray(new Parcelable[0]));
-        }
+        int rowPadding = Math.round(16 * getResources().getDisplayMetrics().density);
+        ArrayAdapter<ResolveInfo> adapter = new ArrayAdapter<ResolveInfo>(
+                this, android.R.layout.activity_list_item, android.R.id.text1, choices) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View row = super.getView(position, convertView, parent);
+                row.setPadding(rowPadding, rowPadding, rowPadding, rowPadding);
+                ResolveInfo info = getItem(position);
+                ((ImageView) row.findViewById(android.R.id.icon)).setImageDrawable(info.loadIcon(pm));
+                ((TextView) row.findViewById(android.R.id.text1)).setText(info.loadLabel(pm));
+                return row;
+            }
+        };
 
-        try {
-            startActivity(chooser);
-        } catch (RuntimeException e) {
-            Toast.makeText(this, R.string.error_no_app, Toast.LENGTH_LONG).show();
-        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.open_with)
+                .setAdapter(adapter, (dialog, which) -> {
+                    try {
+                        startActivity(targets.get(which));
+                    } catch (ActivityNotFoundException e) {
+                        Toast.makeText(this, R.string.error_no_app, Toast.LENGTH_LONG).show();
+                    }
+                })
+                .show();
     }
 }
