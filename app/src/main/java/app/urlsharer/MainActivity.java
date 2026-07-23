@@ -4,21 +4,20 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,12 +29,13 @@ import java.util.Set;
 /**
  * A tiny, dependency-free activity that receives a URL (via VIEW or SEND),
  * lets the user edit it in a large text area, and then hands it off to any
- * browser or app that can open it through the system chooser.
+ * installed browser through a row of quick-open icons.
  */
 public class MainActivity extends Activity {
 
     private static final int REQUEST_BROWSER_ROLE = 1;
     private EditText urlText;
+    private LinearLayout browserButtons;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,8 +43,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         urlText = findViewById(R.id.urlText);
-        Button openButton = findViewById(R.id.openButton);
-        openButton.setOnClickListener(v -> openWith());
+        browserButtons = findViewById(R.id.browserButtons);
         TextView versionText = findViewById(R.id.versionText);
         versionText.setText(getString(R.string.version, BuildConfig.VERSION_NAME));
 
@@ -52,6 +51,12 @@ public class MainActivity extends Activity {
         if (savedInstanceState == null) {
             urlText.post(this::promptForDefaultBrowser);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        populateBrowserButtons();
     }
 
     /** Offers a direct route to Android's default-browser prompt when needed. */
@@ -145,12 +150,60 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Shows a chooser listing every browser/app that can open the edited URL. */
-    private void openWith() {
+    /** Queries installed web handlers and builds one square icon button per app. */
+    private void populateBrowserButtons() {
+        PackageManager pm = getPackageManager();
+        List<ResolveInfo> matches = new ArrayList<>();
+        for (String url : new String[]{"https://example.com", "http://example.com"}) {
+            Intent probe = new Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .addCategory(Intent.CATEGORY_BROWSABLE);
+            matches.addAll(pm.queryIntentActivities(probe, PackageManager.MATCH_ALL));
+        }
+        matches.sort(new ResolveInfo.DisplayNameComparator(pm));
+        browserButtons.removeAllViews();
+
+        Set<String> seen = new LinkedHashSet<>();
+        int size = dp(64);
+        int padding = dp(8);
+        for (ResolveInfo info : matches) {
+            String pkg = info.activityInfo.packageName;
+            if (getPackageName().equals(pkg)
+                    || MainActivity.class.getName().equals(info.activityInfo.name)
+                    || !seen.add(pkg)) {
+                continue;
+            }
+
+            if (browserButtons.getChildCount() > 0) {
+                View divider = new View(this);
+                divider.setBackgroundColor(Color.GRAY);
+                LinearLayout.LayoutParams dividerParams =
+                        new LinearLayout.LayoutParams(dp(1), dp(48));
+                dividerParams.gravity = Gravity.CENTER_VERTICAL;
+                dividerParams.setMarginStart(dp(4));
+                dividerParams.setMarginEnd(dp(4));
+                browserButtons.addView(divider, dividerParams);
+            }
+
+            ImageButton button = new ImageButton(this);
+            button.setBackgroundColor(Color.TRANSPARENT);
+            button.setImageDrawable(info.loadIcon(pm));
+            button.setScaleType(ImageButton.ScaleType.CENTER_INSIDE);
+            button.setPadding(padding, padding, padding, padding);
+            button.setContentDescription(getString(R.string.open_in, info.loadLabel(pm)));
+            button.setOnClickListener(v -> openInBrowser(pkg));
+            browserButtons.addView(button, new LinearLayout.LayoutParams(size, size));
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private Uri getEditedUri() {
         String url = urlText.getText().toString().trim();
         if (TextUtils.isEmpty(url)) {
             Toast.makeText(this, R.string.error_empty, Toast.LENGTH_SHORT).show();
-            return;
+            return null;
         }
 
         Uri uri = Uri.parse(url);
@@ -158,54 +211,23 @@ public class MainActivity extends Activity {
             // Assume http(s) when the user typed a bare host like "example.com".
             uri = Uri.parse("https://" + url);
         }
+        return uri;
+    }
 
-        Intent probe = new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE);
-        PackageManager pm = getPackageManager();
-        List<ResolveInfo> matches = pm.queryIntentActivities(probe, PackageManager.MATCH_ALL);
-        matches.sort(new ResolveInfo.DisplayNameComparator(pm));
-
-        Set<String> seen = new LinkedHashSet<>();
-        List<ResolveInfo> choices = new ArrayList<>();
-        List<Intent> targets = new ArrayList<>();
-        for (ResolveInfo info : matches) {
-            String pkg = info.activityInfo.packageName;
-            if (getPackageName().equals(pkg) || !seen.add(pkg)) {
-                continue;
-            }
-            Intent target = new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE);
-            target.setComponent(new ComponentName(pkg, info.activityInfo.name));
-            choices.add(info);
-            targets.add(target);
-        }
-
-        if (targets.isEmpty()) {
-            Toast.makeText(this, R.string.error_no_app, Toast.LENGTH_LONG).show();
+    private void openInBrowser(String pkg) {
+        Uri uri = getEditedUri();
+        if (uri == null) {
             return;
         }
 
-        int rowPadding = Math.round(16 * getResources().getDisplayMetrics().density);
-        ArrayAdapter<ResolveInfo> adapter = new ArrayAdapter<ResolveInfo>(
-                this, android.R.layout.activity_list_item, android.R.id.text1, choices) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View row = super.getView(position, convertView, parent);
-                row.setPadding(rowPadding, rowPadding, rowPadding, rowPadding);
-                ResolveInfo info = getItem(position);
-                ((ImageView) row.findViewById(android.R.id.icon)).setImageDrawable(info.loadIcon(pm));
-                ((TextView) row.findViewById(android.R.id.text1)).setText(info.loadLabel(pm));
-                return row;
-            }
-        };
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.open_with)
-                .setAdapter(adapter, (dialog, which) -> {
-                    try {
-                        startActivity(targets.get(which));
-                    } catch (ActivityNotFoundException e) {
-                        Toast.makeText(this, R.string.error_no_app, Toast.LENGTH_LONG).show();
-                    }
-                })
-                .show();
+        Intent target = new Intent(Intent.ACTION_VIEW, uri)
+                .addCategory(Intent.CATEGORY_BROWSABLE)
+                .setPackage(pkg);
+        try {
+            startActivity(target);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.error_no_app, Toast.LENGTH_LONG).show();
+            populateBrowserButtons();
+        }
     }
 }

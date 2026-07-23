@@ -6,7 +6,7 @@ browser.
 
 When you click a link, or share text/a URL from another app, URL Sharer opens
 with the URL in a large, editable text area. Tweak it if you like, then tap
-**Open URL With** to pick whichever browser or app should handle it.
+one of the browser icons at the bottom to open it directly in that browser.
 
 When launched and not already the default browser, URL Sharer offers to open
 Android's default-browser prompt so clicked links can be routed through it.
@@ -30,9 +30,10 @@ The single `MainActivity` registers three intent filters:
 | `VIEW` (`http`/`https`, `BROWSABLE`) | Clicking a web link in another app |
 | `SEND` (`text/plain`) | Sharing text/a URL from another app |
 
-Tapping **Open URL With** builds an `ACTION_VIEW` intent for the (possibly
-edited) URL and shows the system chooser. The app excludes itself from that
-chooser to avoid redirect loops.
+When the app opens it queries Android for installed web browsers and displays
+their icons in a quick-launch row. Tapping an icon builds an `ACTION_VIEW`
+intent for the (possibly edited) URL and targets that browser directly. The app
+excludes itself to avoid redirect loops.
 
 ## Building locally
 

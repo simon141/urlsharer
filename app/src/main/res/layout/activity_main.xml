@@ -18,13 +18,20 @@
         android:importantForAutofill="no"
         android:scrollbars="vertical" />
 
-    <Button
-        android:id="@+id/openButton"
+    <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="20dp"
         android:layout_marginTop="16dp"
-        android:text="@string/open_with" />
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/browserButtons"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+    </HorizontalScrollView>
 
     <TextView
         android:id="@+id/versionText"

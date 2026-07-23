@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">URL Sharer</string>
     <string name="version">v%1$s</string>
-    <string name="open_with">Open URL With...</string>
+    <string name="open_in">Open in %1$s</string>
     <string name="hint_url">Paste or edit a URL…</string>
     <string name="error_empty">Enter a URL first</string>
     <string name="error_no_app">No app found to open this URL</string>
